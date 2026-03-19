@@ -30,7 +30,7 @@ This repo is designed for realistic AML evaluation under extreme class imbalance
 
 ## Data
 
-### Inputs (you already have)
+### Inputs
 - `AML_PROJECT.RAW.RAW_TRANSACTIONS`
 - `AML_PROJECT.RAW.RAW_ACCOUNTS`
 
