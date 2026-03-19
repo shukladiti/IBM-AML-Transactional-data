@@ -8,8 +8,6 @@ Anti–Money Laundering (AML) fraud detection pipeline built on Snowflake using 
 
 This repo is designed for realistic AML evaluation under extreme class imbalance, with explicit leakage controls and decision-focused metrics.
 
----
-
 ## Repository Structure
 
 ### Snowflake/Snowpark entrypoints (run these in Snowflake)
@@ -28,8 +26,6 @@ This repo is designed for realistic AML evaluation under extreme class imbalance
   - `evaluation/metrics.py`: KS and Top-K precision/recall helpers
   - `evaluation/thresholds.py`: threshold selection helpers (Youden/F2, alert-budget cutoff)
 
----
-
 ## Data (Expected Tables)
 
 ### Inputs (you already have)
@@ -44,8 +40,6 @@ Training defaults in `spark_jobs/training_models.py`:
 
 You may override table names in the scripts if your schema differs.
 
----
-
 ## End-to-End Workflow
 
 ### 1) Build features
@@ -59,8 +53,6 @@ What it does (high level):
 
 **Important:** After changing SQL features, you must rebuild the feature table.
 
----
-
 ### 2) Validate features
 Run `spark_jobs/data_validation.py`.
 
@@ -72,8 +64,6 @@ This step helps catch:
 - label/amount issues
 - unexpected missingness
 - dataset anomalies
-
----
 
 ### 3) Train + score (production-like evaluation)
 Run `spark_jobs/training_models.py`.
@@ -97,10 +87,9 @@ Run `spark_jobs/training_models.py`.
 #### Models
 `training_models.py` trains:
 - XGBoost (primary): time split training + optional Optuna tuning
-- LightGBM (if installed)
+- LightGBM 
 - Logistic Regression (baseline)
 
----
 
 ## Evaluation (Decision-Focused)
 
@@ -133,7 +122,6 @@ In addition to standard metrics, the script reports AML-relevant decision views:
 6. **Stress test (feature dependency)**
    - Neutralizes the strongest behavioral/counterparty features to estimate how fragile the model is under drift.
 
----
 
 ## Run Logging + Predictions
 
@@ -150,7 +138,6 @@ Predictions include:
 - run metadata (`RUN_ID`, `MODEL_VERSION`)
 - `SCORED_AT`
 
----
 
 ## Requirements (Python Environment)
 
@@ -164,23 +151,12 @@ Optional:
 - `optuna` (enables Optuna tuning)
 - `lightgbm` (enables LightGBM training)
 
----
 
 ## Notes / Known Limitations
 
 - GNN/GAT training is **not implemented** in this repo yet.
 - Strict leakage assumptions depend on how the feature SQL is built and refreshed.
 - The production-like test fraud rate enforcement is designed for realistic evaluation, but it will still reduce metrics stability if the enforced test sample has very few frauds.
-
----
-
-## Suggested Usage Order
-
-1. Run `jobs/feature_engineering.py`
-2. Run `jobs/data_validation.py`
-3. Run `jobs/training_models.py`
-
----
 
 ## Next Improvements (Roadmap)
 - Add GNN/GAT edge classification training (`gat`/`GNN`) as a new entrypoint file
