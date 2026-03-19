@@ -26,7 +26,7 @@ This repo is designed for realistic AML evaluation under extreme class imbalance
   - `evaluation/metrics.py`: KS and Top-K precision/recall helpers
   - `evaluation/thresholds.py`: threshold selection helpers (Youden/F2, alert-budget cutoff)
 
-## Data (Expected Tables)
+## Data
 
 ### Inputs (you already have)
 - `AML_PROJECT.RAW.RAW_TRANSACTIONS`
@@ -65,7 +65,7 @@ This step helps catch:
 - unexpected missingness
 - dataset anomalies
 
-### 3) Train + score (production-like evaluation)
+### 3) Train + score (Real production-like evaluation)
 Run `spark_jobs/training_models.py`.
 
 #### Split strategy
