@@ -1,28 +1,16 @@
 """
-AML fraud detection training (Snowpark / Snowflake).
+This AML fraud detection training pipeline, built on Snowpark and Snowflake, is designed to closely mimic real-world production conditions 
+while maintaining strong data integrity and scalability. 
+The test set can be configured to use the natural fraud rate (`USE_NATURAL_TEST_RATE=True`), allowing evaluation metrics to reflect realistic 
+distributions (~0.1–0.2% fraud), while the training data remains stratified to ensure sufficient fraud examples for learning; when enabled.
 
-Data integrity & evaluation
-- Test set can use natural fraud rate (USE_NATURAL_TEST_RATE=True) so holdout reflects real-world
-  distribution (~0.1–0.2% fraud) instead of stratified oversample; metrics then reflect production.
-- Train keeps stratified sampling so the model sees enough fraud; test uses a time-ordered cap when
-  natural rate is enabled.
+The test set also follows a time-based cap to preserve temporal order. To prevent data leakage, most features are strictly backward-looking—rolling
+metrics are computed using past-only time windows, and interaction-based features rely on prior events—while certain lifetime aggregates (e.g., unique senders/receivers/banks)
+may include future information and can be excluded via `EXCLUDE_LEAKY_FEATURES` for stricter evaluation. For scalability, only capped samples are converted to Pandas, 
+with options to reduce row limits or shift training to distributed frameworks like Spark for larger datasets. Feature engineering includes missing value imputation along with
+indicator flags, and can be extended with ratio-based features, anomaly signals such as rolling z-scores, 
+and improved feature interpretability by mapping model feature indices back to their original names.
 
-Data leakage
-- Rolling features (TXN_COUNT_*_FROM, AVG_*, etc.) are built in feature_engineering with
-  RANGE BETWEEN interval PRECEDING AND CURRENT ROW — past-only. REPEAT_COUNTERPARTY_COUNT
-  is row_number()-1 over (from, to, ts), i.e. past-only.
-- Lifetime counts (NUM_UNIQUE_RECEIVERS, NUM_UNIQUE_SENDERS, NUM_UNIQUE_BANKS) use
-  partition-only windows in SQL (no ORDER BY/frame), so they include future rows — set
-  EXCLUDE_LEAKY_FEATURES to drop them for strict backward-looking evaluation.
-
-Scalability
-- Only capped samples are pulled via .to_pandas(); for much larger tables, lower MAX_*_ROWS or
-  run training outside Snowflake with Spark + connector for distributed training.
-
-Feature engineering (see feature_engineering.py)
-- Missing values: imputation + _IS_MISSING indicators in this script. For more robust signals,
-  consider: transaction ratios (e.g. amount / avg_7d), anomaly scores (z-score vs 7d), and
-  explicit validation of feature importance (we map booster f0,f1 to names for reporting).
 """
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark import functions as F
