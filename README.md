@@ -13,11 +13,11 @@ This repo is designed for realistic AML evaluation under extreme class imbalance
 ## Repository Structure
 
 ### Snowflake/Snowpark entrypoints (run these in Snowflake)
-- `spark_jobs/feature_engineering.py`
+- `jobs/feature_engineering.py`
   - Creates one row per transaction with rolling and counterparty/entity features
-- `spark_jobs/data_validation.py`
+- `jobs/data_validation.py`
   - Generates summary dataset reports (fraud rate, nulls, duplicates, feature distributions)
-- `spark_jobs/training_models.py`
+- `jobs/training_models.py`
   - Loads the feature table, creates a time split, trains models, evaluates, logs runs, writes predictions
 
 ### Reusable Python helpers
@@ -35,7 +35,7 @@ This repo is designed for realistic AML evaluation under extreme class imbalance
 - `AML_PROJECT.RAW.RAW_ACCOUNTS`
 
 ### Outputs (used by training / written by this pipeline)
-Training defaults in `spark_jobs/training_models.py`:
+Training defaults in `jobs/training_models.py`:
 - Feature table: `AML_PROJECT.RAW.TRANSACTION_FEATURES`
 - Prediction table: `AML_PROJECT.RAW.FRAUD_PREDICTIONS`
 - Run metrics table: `AML_PROJECT.RAW.ML_RUNS`
@@ -45,7 +45,7 @@ You may override table names in the scripts if your schema differs.
 ## End-to-End Workflow
 
 ### 1) Build features
-Run `spark_jobs/feature_engineering.py`.
+Run `jobs/feature_engineering.py`.
 
 What it does (high level):
 - Joins transaction rows to account metadata
@@ -56,7 +56,7 @@ What it does (high level):
 **Important:** After changing SQL features, you must rebuild the feature table.
 
 ### 2) Validate features
-Run `spark_jobs/data_validation.py`.
+Run `jobs/data_validation.py`.
 
 What it does:
 - Computes fraud rate, null percentages, duplicates sanity checks
@@ -68,7 +68,7 @@ This step helps catch:
 - dataset anomalies
 
 ### 3) Train + score (Real production-like evaluation)
-Run `spark_jobs/training_models.py`.
+Run `jobs/training_models.py`.
 
 #### Split strategy
 - Uses `EVENT_TIMESTAMP` to create:
@@ -76,7 +76,7 @@ Run `spark_jobs/training_models.py`.
   - `test`: the holdout window (`TEST_DAYS`)
 
 #### Fraud-rate realism
-- For credible AML evaluation, `training_models.py` can enforce a target fraud rate in the test sample:
+- For a credible AML evaluation, `training_models.py` can enforce a target fraud rate in the test sample:
   - `USE_NATURAL_TEST_RATE=True`
   - `TARGET_TEST_FRAUD_RATE=0.01` (default 1%)
 - This avoids overly optimistic metrics when the holdout period is fraud-heavy.
