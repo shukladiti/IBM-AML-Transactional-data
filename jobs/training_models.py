@@ -57,7 +57,6 @@ from aml_pipeline.preprocessing import (
 )
 from aml_pipeline.train_validation import pre_train_checks, validate_training_sample
 
-# Optional: Optuna, LightGBM (skip if not installed)
 try:
     import optuna
     HAS_OPTUNA = True
@@ -91,11 +90,11 @@ FEATURE_COLS = [
     "TXN_VELOCITY_7D_FROM",
     "IS_LARGE_TXN", "IS_ROUNDED_AMOUNT",
 ]
-# Lifetime (partition-only) counts can leak future info; exclude for strict eval
+
 EXCLUDE_LEAKY_FEATURES = ["NUM_UNIQUE_RECEIVERS", "NUM_UNIQUE_SENDERS", "NUM_UNIQUE_BANKS"]
 EFFECTIVE_FEATURE_COLS = [c for c in FEATURE_COLS if c not in EXCLUDE_LEAKY_FEATURES]
 
-TEST_DAYS = 120   # holdout window (longer = more test-period rows before 1% enforcement)
+TEST_DAYS = 120   
 RANDOM_SEED = 42
 
 # Stratified sampling: fraction per class; increase for more data (watch driver memory).
@@ -115,15 +114,11 @@ USE_NATURAL_TEST_RATE = True
 TARGET_TEST_FRAUD_RATE = 0.01   # 1%
 NATURAL_TEST_MAX_ROWS = 1_000_000 # more test rows when enforcing 1% (need enough frauds for stable metrics)
 
-# Ensure we actually use all expected feature columns.
-# If your feature table hasn't been rebuilt after adding new SQL features,
-# training would otherwise silently drop missing columns.
+
 STRICT_FEATURE_COLUMNS = True
 
-# Backtest windows (days) for holdout evaluation
 BACKTEST_DAYS = [14, 28, 56]
 
-# Correlation threshold: drop one of pair if |corr| > this
 CORR_THRESHOLD = 0.95
 
 # Optuna / tuning
@@ -134,50 +129,17 @@ CV_SPLITS = 4
 TOP_K_PCTS = [0.001, 0.005, 0.01]
 TOP_K_ABS = [1000, 5000, 10000]
 ALERT_BUDGET_PCTS = [0.001, 0.002, 0.005, 0.01]  # 0.1%, 0.2%, 0.5%, 1.0%
-DEFAULT_OPERATIONAL_ALERT_RATE = 0.001            # primary operating point for reporting
+DEFAULT_OPERATIONAL_ALERT_RATE = 0.001            
 STRESS_TEST_FEATURES = ["IS_NEW_COUNTERPARTY", "REPEAT_COUNTERPARTY_COUNT"]
 
-
-#
-# stratified_sample_snowpark extracted to `aml_pipeline/sampling.py`
-#
-
-
-#
-# pre_train_checks extracted to `aml_pipeline/train_validation.py`
-#
-
-
-#
-# validate_training_sample extracted to `aml_pipeline/train_validation.py`
-#
-
-
-#
-# impute_and_missing_indicators extracted to `aml_pipeline/preprocessing.py`
-#
-
-
-#
-# drop_highly_correlated extracted to `aml_pipeline/preprocessing.py`
-#
-
-
-#
-# find_best_threshold extracted to `aml_pipeline/evaluation/thresholds.py`
-#
-
-
-# ---------- Snowpark: load and split (no full .to_pandas) ----------
 session = get_active_session()
 
-# Ensure session has current database/schema (required for create_dataframe/write_pandas temp stage)
 _db, _schema = FEATURE_TABLE.split(".")[0], FEATURE_TABLE.split(".")[1]
 try:
     session.sql(f"USE DATABASE {_db}").collect()
     session.sql(f"USE SCHEMA {_schema}").collect()
 except Exception:
-    pass  # already set or no permission; continue
+    pass  
 
 df = session.table(FEATURE_TABLE)
 if EXCLUDE_LEAKY_FEATURES:
@@ -402,7 +364,7 @@ if HAS_LGB:
 else:
     print("LightGBM not installed; skipping.")
 
-# ---------- Logistic Regression (scaled) ----------
+# ---------- Logistic Regression  ----------
 model_lr = LogisticRegression(
     class_weight="balanced",
     max_iter=500,
@@ -609,12 +571,11 @@ except Exception as e:
     print(f"Run logging skipped: {e}")
 
 # ---------- Write predictions (Snowpark) ----------
-# Ensure table has RUN_ID and MODEL_VERSION (existing table may have only 8 columns)
 for col in ("RUN_ID", "MODEL_VERSION"):
     try:
         session.sql(f"ALTER TABLE {PRED_TABLE} ADD COLUMN {col} STRING").collect()
     except Exception:
-        pass  # column already exists
+        pass  
 
 out = test_pd[ID_COLS].copy()
 out["FRAUD_PROBABILITY"] = proba
@@ -623,7 +584,6 @@ out["MODEL_VERSION"] = model_version
 out["RUN_ID"] = run_id
 out["SCORED_AT"] = pd.Timestamp.utcnow().to_pydatetime()
 
-# Match table column order (Snowflake append inserts by position)
 db, schema, name = PRED_TABLE.split(".")
 try:
     order_rows = session.sql(f"""
@@ -637,7 +597,7 @@ try:
             out[c] = None
     out = out[table_columns]
 except Exception:
-    pass  # keep out as-is if we can't read schema
+    pass  
 
 pred_sdf = session.create_dataframe(out)
 pred_sdf.write.save_as_table(PRED_TABLE, mode="append")
