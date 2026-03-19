@@ -1,0 +1,230 @@
+================================================================================
+  AML FRAUD DETECTION — RUN 7 MODEL REPORT
+================================================================================
+
+  Run ID      : 20260319_182436
+  Model       : XGBoost (primary) · LightGBM · Logistic Regression
+  Feature table : AML_PROJECT.RAW.TRANSACTION_FEATURES
+  Predictions   : AML_PROJECT.RAW.FRAUD_PREDICTIONS
+  Artifact      : /tmp/aml_models/xgb_xgboost_20260319_182436.json
+
+================================================================================
+  WHY ACCURACY IS NOT REPORTED
+================================================================================
+
+  In AML fraud detection the label distribution is severely imbalanced —
+  roughly 1 fraud per 100 transactions. A model that labels every single
+  transaction as "not fraud" achieves 99% accuracy while catching zero frauds.
+  Accuracy rewards the majority class and is meaningless here.
+
+  Metrics used instead:
+
+  AUC-PR   Area under the Precision-Recall curve. The primary metric.
+           Measures how well the model ranks fraud above legitimate
+           transactions across all thresholds. Robust to class imbalance
+           because it focuses entirely on the positive (fraud) class.
+
+  ROC AUC  Overall discrimination between classes. Less sensitive to
+           imbalance than accuracy but can be overly optimistic when
+           negatives vastly outnumber positives.
+
+  KS       Maximum separation between cumulative fraud and legitimate
+           score distributions. KS = 0.89 means very clean separation.
+
+  Precision / Recall at operational thresholds — the business-facing
+           metrics. Precision = fraction of flagged transactions that are
+           actually fraud. Recall = fraction of all fraud that gets flagged.
+
+================================================================================
+  TEST SET DESIGN
+================================================================================
+
+  The test set uses a production-like fraud rate of 1%, enforced by
+  downsampling the majority class. Evaluating on a 50/50 stratified split
+  would inflate precision metrics that would never hold in production.
+
+  The test window covers the most recent 120 days, time-ordered and fully
+  held out from training. The train set uses stratified oversampling (~2%
+  fraud rate) so the model sees enough positive examples during learning.
+
+================================================================================
+  CORE MODEL METRICS
+================================================================================
+
+  AUC-PR (higher is better; random baseline = 0.01 at 1% fraud rate)
+  -----------------------------------------------------------------------
+  XGBoost          0.681  ||||||||||||||||||||||||||||||||||||||||||||  BEST
+  LightGBM         0.600  |||||||||||||||||||||||||||||||||||||
+  Logistic Reg.    0.214  |||||||||||||
+
+  ROC AUC (higher is better; random baseline = 0.50)
+  -----------------------------------------------------------------------
+  XGBoost          0.986  ||||||||||||||||||||||||||||||||||||||||||||  BEST
+  LightGBM         0.977  |||||||||||||||||||||||||||||||||||||||||||
+  Logistic Reg.    0.966  ||||||||||||||||||||||||||||||||||||||||||
+
+  KS Statistic (higher is better; 0 = no separation, 1 = perfect)
+  -----------------------------------------------------------------------
+  XGBoost          0.889  ||||||||||||||||||||||||||||||||||||||||||||  BEST
+  LightGBM         0.853  ||||||||||||||||||||||||||||||||||||||||||
+  Logistic Reg.    0.833  |||||||||||||||||||||||||||||||||||||||||
+
+================================================================================
+  ALERT BUDGET OPERATING POINTS
+================================================================================
+
+  Given a fixed investigator capacity (% of all transactions reviewed),
+  how many frauds are caught and how much noise do investigators face?
+
+  Alert rate  Threshold  Precision  Recall   True+   False+
+  ------------------------------------------------------------------
+  0.10%       0.995      99.69%     10.0%      976        3
+  0.20%       0.992      99.03%     19.8%    1,938       19
+  0.50%       0.981      87.84%     43.9%    4,298      595   <-- recommended
+  1.00%       0.956      62.10%     62.1%    6,078    3,709
+
+  Recommended operating point: 0.5% alert rate.
+  Catches 44% of all fraud at 88% precision. Jumping to 1.0% triples
+  false positives (595 -> 3,709) for a modest recall gain — a poor trade
+  unless investigator capacity supports it.
+
+  Precision at each alert rate
+  -----------------------------------------------------------------------
+  0.10%   99.69%  ||||||||||||||||||||||||||||||||||||||||||||||||||||
+  0.20%   99.03%  |||||||||||||||||||||||||||||||||||||||||||||||||||
+  0.50%   87.84%  |||||||||||||||||||||||||||||||||||||||||||||
+  1.00%   62.10%  |||||||||||||||||||||||||||||||
+
+  False positives at each alert rate
+  -----------------------------------------------------------------------
+  0.10%       3   |
+  0.20%      19   |
+  0.50%     595   |||||||||||||||||||||||||||||||
+  1.00%   3,709   ||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+================================================================================
+  INVESTIGATION CAPACITY
+================================================================================
+
+  If investigators can only review a fixed number of transactions per day:
+
+  Top K    Frauds caught   % of all fraud   Precision
+  ----------------------------------------------------------
+    100          100            1.0%          100.0%
+    500          500            5.1%          100.0%
+  1,000          997           10.2%           99.7%
+  5,000        4,364           44.6%           87.3%
+
+  Frauds caught vs. K reviewed
+  -----------------------------------------------------------------------
+  Top   100   100  |||||
+  Top   500   500  ||||||||||||||||||||||||
+  Top 1,000   997  ||||||||||||||||||||||||||||||||||||||||||||||||
+  Top 5,000  4364  ||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+  The top-scored transactions are almost perfectly precise.
+  The first 500 flagged contain zero false positives.
+
+================================================================================
+  FEATURE IMPORTANCE  (XGBoost gain)
+================================================================================
+
+  REPEAT_COUNTERPARTY_COUNT          43664  ||||||||||||||||||||||||||||||||||||||||||||
+  IS_NEW_COUNTERPARTY                21873  ||||||||||||||||||||||||
+  TXN_COUNT_1H_FROM                  17467  ||||||||||||||||||
+  SAME_BANK                          13261  |||||||||||||
+  HOUR_OF_DAY                        11798  ||||||||||||
+  MAX_TXN_AMOUNT_7D_FROM             10177  ||||||||||
+  NUM_SIMILAR_AMOUNT_TXNS_24H         7660  ||||||||
+  AMOUNT_RECEIVED                     7504  |||||||
+  TIME_SINCE_LAST_TXN_FROM_IS_MISS    7464  |||||||
+  LOG_AMOUNT                          7069  |||||||
+  TXN_GAP_STD_7D                      5924  ||||||
+  TIME_SINCE_LAST_TXN_FROM            5787  |||||
+  IS_WEEKEND                          4868  |||||
+  AMOUNT_PAID                         3905  ||||
+  AMOUNT_ZSCORE_7D_IS_MISSING         3481  |||
+  TXN_COUNT_7D_FROM                   3350  |||
+  TIME_SINCE_LAST_TXN_TO_IS_MISS      3220  |||
+  FIRST_TXN_OF_DAY_FROM               3035  |||
+  AVG_TXN_AMOUNT_7D_FROM              2811  |||
+  TXN_AMOUNT_SUM_24H_FROM             2657  |||
+
+  Note: _IS_MISSING features appear because missingness itself is
+  informative — new or rarely-transacting accounts have no rolling
+  history, which is a fraud signal in its own right.
+
+  FEATURE CONCENTRATION RISK
+  -----------------------------------------------------------------------
+  Neutralising REPEAT_COUNTERPARTY_COUNT + IS_NEW_COUNTERPARTY:
+
+    AUC-PR baseline   0.681  ||||||||||||||||||||||||||||||||||||||||||||
+    AUC-PR stressed   0.162  ||||||||||
+
+    Drop: -76%  (-0.519 absolute)
+
+  The model is substantially dependent on counterparty graph signals.
+  If fraudsters route through previously-seen counterparties, or if
+  these features degrade in production, performance will drop sharply.
+
+================================================================================
+  TEMPORAL STABILITY  (backtesting)
+================================================================================
+
+  Window      Sample    AUC-PR    KS
+  -------------------------------------------
+  Last 14d       107     1.000   1.000   * small sample — treat with caution
+  Last 28d       500     0.999   0.894   * small sample — treat with caution
+  Last 56d     5,411     0.993   0.843   reliable
+
+  KS by backtest window (56d is the reliable benchmark)
+  -----------------------------------------------------------------------
+  Last 14d   1.000  ||||||||||||||||||||||||||||||||||||||||||||||||||||||
+  Last 28d   0.894  ||||||||||||||||||||||||||||||||||||||||||||||
+  Last 56d   0.843  ||||||||||||||||||||||||||||||||||||||||||
+
+  KS drops from 1.00 at 14 days to 0.84 at 56 days. Monthly retraining
+  is recommended given the observed drift trend.
+
+================================================================================
+  DATA QUALITY NOTES
+================================================================================
+
+  Train duplicate keys removed  :  5,121
+  Test duplicate keys removed   : 21,232  (consistent across all runs)
+
+  Features with null values (imputed with median, indicators added):
+    TIME_SINCE_LAST_TXN_FROM    2.57%
+    PCT_CHANGE_VS_PREV          2.57%
+    TIME_SINCE_LAST_TXN_TO      2.13%
+    TXN_AMOUNT_STD_7D_FROM      5.69%
+    AMOUNT_ZSCORE_7D_FROM       6.85%
+    TXN_GAP_STD_7D              7.26%
+
+  3 highly correlated feature pairs dropped (threshold: r > 0.95)
+
+  Excluded leaky features (partition-only windows include future rows):
+    NUM_UNIQUE_RECEIVERS, NUM_UNIQUE_SENDERS, NUM_UNIQUE_BANKS
+
+================================================================================
+  KNOWN LIMITATIONS
+================================================================================
+
+  Early stopping leakage
+    n_estimators is selected by evaluating against the holdout set, which
+    is a mild form of data leakage. Fix: carve a validation split from the
+    training period for early stopping only. Metrics may be slightly
+    inflated as a result.
+
+  Counterparty feature fragility
+    Described above. Production monitoring should include PSI tracking on
+    REPEAT_COUNTERPARTY_COUNT. PSI above 0.5 should trigger review and
+    potential emergency retraining.
+
+  Sampling non-determinism
+    Snowpark sample() has no random seed. Each run trains on a slightly
+    different subset, so reported metrics include sampling variance in
+    addition to model variance. Observed AUC-PR variance across valid
+    runs: 0.672 - 0.685.
+
+================================================================================

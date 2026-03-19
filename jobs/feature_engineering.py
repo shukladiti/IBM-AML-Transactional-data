@@ -8,6 +8,12 @@ def build_transaction_features(session: Session) -> DataFrame:
     One row = one transaction.
     """
 
+    # --- 1. Basic cleaning and validation (as SQL CTEs) ---
+
+    # We do most of the heavy lifting in SQL so we can use
+    # Snowflake's RANGE INTERVAL window functions cleanly.
+    # Adjust table/database/schema names if needed.
+
     feature_sql = """
     WITH
     -- 1) Base transactions, cast types and basic filters
@@ -400,3 +406,9 @@ def build_transaction_features(session: Session) -> DataFrame:
 
     df_features = session.sql(feature_sql)
     return df_features
+
+
+# Example usage inside Snowpark:
+# session = Session.builder.configs(connection_parameters).create()
+# df_features = build_transaction_features(session)
+# df_features.write.save_as_table("AML_PROJECT.FEATURES.TRANSACTION_FEATURES", mode="overwrite")
