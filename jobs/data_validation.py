@@ -3,14 +3,13 @@ from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark import functions as F
 
 # ---------- CONFIG ----------
-FEATURE_TABLE = "AML_PROJECT.RAW.TRANSACTION_FEATURES"   # change if you saved elsewhere
+FEATURE_TABLE = "AML_PROJECT.RAW.TRANSACTION_FEATURES"   
 REPORT_TABLE  = "AML_PROJECT.RAW.FEATURE_VALIDATION_REPORT"
 LABEL_COL     = "IS_LAUNDERING"
 TS_COL        = "EVENT_TIMESTAMP"
 
 KEY_COLS = ["FROM_BANK", "FROM_ACCOUNT", "TO_BANK", "TO_ACCOUNT", TS_COL]
 AMOUNT_COLS = ["AMOUNT_PAID", "AMOUNT_RECEIVED", "LOG_AMOUNT"]
-# Add/remove engineered feature cols as needed:
 FEATURE_COLS = [
     "CURRENCIES_DIFFERENT","SAME_BANK","HOUR_OF_DAY","DAY_OF_WEEK","IS_WEEKEND",
     "TIME_SINCE_LAST_TXN_FROM","TXN_COUNT_1H_FROM","TXN_COUNT_24H_FROM","TXN_AMOUNT_SUM_24H_FROM",
@@ -60,7 +59,6 @@ bad_checks = df_features.agg(
 )
 
 # 5) Duplicate key-ish rows (helps catch accidental duplication)
-# If you have a true transaction id, use it instead.
 dup_cnt = (
     df_features.group_by(*[c for c in KEY_COLS if c in df_features.columns])
       .count()
