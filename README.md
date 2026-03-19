@@ -1,5 +1,7 @@
 # IBM AML Fraud Detection (Snowflake / Snowpark)
 
+I’m building an AML fraud-detection pipeline specifically for Snowflake because it’s the platform where the data already lives and where I want the workflow to be operational end-to-end. My goal is to generate transaction-level features from Snowflake tables using Snowpark SQL, validate the resulting dataset for issues like nulls/duplicates and potential leakage, and then train and evaluate models with time-based splits and business-aligned metrics (e.g., alert-budget and Top-K investigation capacity) to reflect realistic AML constraints under extreme class imbalance.
+
 Anti–Money Laundering (AML) fraud detection pipeline built on Snowflake using Snowpark:
 1. Build transaction-level features in SQL (`feature_engineering.py`)
 2. Validate feature integrity and dataset health (`data_validation.py`)
